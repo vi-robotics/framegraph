@@ -5,17 +5,16 @@ from framegraph.np_array_list import NpArrayList
 
 class TestNpArrayList(unittest.TestCase):
 
-    def test_one_d_array(self):
-
-        arr = NpArrayList((10, 3))
-        arr[:] = 20
+    def test_two_d_array(self):
+        """Test simple properties of array list on 2d array
+        """
+        arr = NpArrayList(np.zeros((10, 3)))
+       
         arr.append([3,4,5])
-        x = arr[:11]
-        y = np.zeros(x.shape)
-        print(y)
-        print(arr)
-        print(arr + y)
-
+        arr.append([6,7,8])
+        self.assertTrue(arr.size == 36)
+        self.assertTrue(np.allclose(arr[-1].data, [6,7,8] ))
+        self.assertTrue(arr.shape == (12,3))
 
 if __name__ == '__main__':
     unittest.main()
