@@ -18,6 +18,9 @@ setuptools.setup(
     install_requires=[
         'numpy',
         'numpy-quaternion',
+        'numba',
+        'scipy',
+        'python-igraph'
     ],
     extras_require={
         'debug': [
