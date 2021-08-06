@@ -156,6 +156,10 @@ class Pose():
             raise ValueError(f"rotation has invalid type: {type(rotation)}")
         return std_form
 
+    def __getitem__(self, key):
+        return self.__class__(rotation=self.rotation[key],
+                              translation=self.translation[key])
+
     def __mul__(self, other):
         rot = self.rotation * other.rotation
         trans = self.transform_vecs(other.translation)
