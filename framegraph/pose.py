@@ -1,59 +1,12 @@
 from typing import Union, Any
 import numpy as np
-from numba import jit
 import quaternion
 
-
-@jit(nopython=True, cache=True)
-def transform_vec(rotation: np.ndarray,
-                  translation: np.ndarray,
-                  vec: np.ndarray) -> np.ndarray:
-    """Transforms a vector by a pose represented by a rotation then translation.
-    Args:
-        rotation (np.ndarray): A 1x4 array representing the rotation quaternion.
-        translation (np.ndarray): A 1x3 array representing the translation.
-        vec (np.ndarray): The vector to transform
-    Returns:
-        np.ndarray: The transformed vector
-    """
-    scalar_comp = rotation[0]
-    imag_comp = rotation[1:]
-    norm = np.sum(rotation**2)
-    comp_a = 2 * imag_comp
-    comp_b = scalar_comp * vec
-    comp_c = np.cross(imag_comp, vec)
-    comp_d = (comp_b + comp_c) / norm
-    rot = (np.cross(comp_a, comp_d) + vec)
-    return rot + translation
+from framegraph.utils import transform_vecs, transform_vec
+from framegraph.pose_abc import AbstractPose
 
 
-@jit(nopython=True, cache=True)
-def transform_vecs(rotation: np.ndarray,
-                   translation: np.ndarray,
-                   vec_array: np.ndarray) -> np.ndarray:
-    """Transforms an array of vectors by an array of poses represented by an
-    array of rotations (quaternions) and array of translations.
-    Args:
-        rotation (np.ndarray): A #Nx4 array representing the rotation
-            quaternion array.
-        translation (np.ndarray): A #Nx3 array representing the
-            translation array.
-        vec_array (np.ndarray):  An #Nx3 vector array to transform
-    Returns:
-        np.ndarray: The #Nx3 transformed vector array
-    """
-    scalar_comp = rotation[:, 0]
-    imag_comp = rotation[:, 1:]
-    norm = np.sum(rotation**2, axis=1)
-    comp_a = 2 * imag_comp
-    comp_b = np.expand_dims(scalar_comp, 1) * vec_array
-    comp_c = np.cross(imag_comp, vec_array)
-    comp_d = (comp_b + comp_c) / np.expand_dims(norm, 1)
-    rot = (np.cross(comp_a, comp_d) + vec_array)
-    return rot + translation
-
-
-class Pose():
+class Pose(AbstractPose):
     def __init__(self,
                  rotation: Union[np.ndarray, np.quaternion] = None,
                  translation: np.ndarray = None):
@@ -76,6 +29,11 @@ class Pose():
         self.rotation = rotation
         self.translation = translation
         self._check_consistency()
+
+    @classmethod
+    def from_quat_pos(cls, quat: Union[np.quaternion, np.ndarray] = None,
+                      translation: np.ndarray = None):
+        return cls(rotation=quat, translation=translation)
 
     @property
     def translation(self):
@@ -104,15 +62,6 @@ class Pose():
         return self.__class__(interp_rots, interp_trans)
 
     def transform_vecs(self, vec: np.ndarray) -> np.ndarray:
-        """Transforms a vector or vector array by the pose. The size of
-        vec must be the same as the number of transforms represented by this
-        pose object.
-        Args:
-            vec (np.ndarray): A #Nx3 vector array or a 1x3 vector to
-                transform.
-        Returns:
-            np.ndarray: The transformed vector or vector array.
-        """
         rot = quaternion.as_float_array(self.rotation)
         if rot.ndim == 1:
             return transform_vec(rot, self.translation, vec)
@@ -129,6 +78,27 @@ class Pose():
         trans_mat[..., :3, :3] = r_mat
         trans_mat[..., :3, 3] = self.translation
         return trans_mat
+
+    @classmethod
+    def from_trans_mat(cls, trans_mat: np.ndarray):
+        translation = trans_mat[..., :3, 3]
+        rotation = quaternion.from_rotation_matrix(trans_mat[..., :3, :3])
+        return cls(rotation=rotation, translation=translation)
+
+    def as_rmat_pos(self):
+        return quaternion.as_rotation_matrix(self.rotation), self.translation
+
+    @classmethod
+    def from_rmat_pos(cls, rmat: np.ndarray = None, pos: np.ndarray = None):
+        quat = quaternion.from_rotation_matrix(rmat)
+        return cls(rotation=quat, translation=pos)
+
+    def as_rvec_pos(self):
+        return quaternion.as_rotation_vector(self.rotation), self.translation
+
+    @classmethod
+    def from_rvec_pos(cls, rvec: np.ndarray = None, pos: np.ndarray = None):
+        return cls(rotation=quaternion.from_rotation_vector(rvec), translation=pos)
 
     def _check_consistency(self):
         if isinstance(self.rotation, np.quaternion):
