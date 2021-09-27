@@ -135,7 +135,7 @@ class NpArrayList():
         """
         new_shape = list(self._backed_shape)
         new_shape[self.extend_axis] *= 2
-        self._data.resize(new_shape)
+        self._data.resize(new_shape, refcheck=False)
 
     @property
     def _backed_shape(self):

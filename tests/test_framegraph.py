@@ -57,6 +57,48 @@ class TestFrameGraph(unittest.TestCase):
         for param, targ_parm in zip(ps, target_params):
             self.assertTrue(np.allclose(param, targ_parm))
 
+    def test_already_present_node(self):
+        """Test that an error is raised for a node already present in the 
+        graph.
+        """
+        fg = FrameGraph()
+        fg.add_node("frame")
+
+        def cause_error():
+            fg.add_node("frame")
+        self.assertRaises(ValueError, cause_error)
+
+    def test_bad_params(self):
+        """Test that an edge added with bad params raises an error
+        """
+        fg = FrameGraph()
+        fg.add_node("frame")
+        cb = Joint.fixed(np.eye(4))
+
+        # Check a non-array
+        def cause_error():
+            fg.add_edge("world", "frame", cb, 3)
+        self.assertRaises(ValueError, cause_error)
+
+        cb = Joint.cylindrical(np.array([0, 1, 0]))
+
+        # Check a non-1d array
+        def cause_error():
+            fg.add_edge("world", "frame", cb, np.array([[0.0, 0.1]]))
+        self.assertRaises(ValueError, cause_error)
+
+    def test_fixed_pose(self):
+        """Test that using a parameter-free pose works correctly in the graph
+        """
+        fg = FrameGraph()
+        fg.add_node("frame")
+        fg.add_node("end_effector")
+        j1 = Joint.revolute(np.array([1, 0, 0]))
+        j2 = Joint.fixed(np.eye(4))
+        fg.add_edge("world", "frame", j1, np.array([1.0]))
+        fg.add_edge("frame", "end_effector", j2, None)
+        fg.get_relative_transform("world", "end_effector", ret_jac=True)
+
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main()  # pragma: no cover

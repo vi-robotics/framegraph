@@ -1,4 +1,5 @@
-from typing import Union, Callable, Dict, Any, Tuple
+from typing import Union, Callable, Dict, Any, Tuple, Optional
+import sys
 import operator
 from functools import reduce
 import numpy as np
@@ -32,11 +33,19 @@ class FrameGraph():
                  source: Union[int, str],
                  target: Union[int, str],
                  transform_callback: Callable[..., jnp.ndarray],
-                 params: np.ndarray):
-        if not isinstance(params, np.ndarray):
-            raise ValueError("params must be an ndarray")
-        if params.ndim != 1:
-            raise ValueError("params must be a 1d array")
+                 params: Optional[np.ndarray] = None):
+        if params is not None:
+            if not isinstance(params, np.ndarray):
+                raise ValueError("params must be an ndarray")
+            if params.ndim != 1:
+                raise ValueError("params must be a 1d array")
+            try:
+                transform_callback(params)
+            except:
+                e = sys.exc_info()[0]
+                raise RuntimeError(
+                    f"transform_callback failed with error: {e}")
+
         attrs: Dict[str, Any] = {
             "params": params,
             "transform_callback": transform_callback
@@ -79,18 +88,25 @@ class FrameGraph():
         edges = self._graph.es[eids]
         callbacks = [e["transform_callback"] for e in edges]
         all_params = [e["params"] for e in edges]
+        non_none = [el for el in all_params if el is not None]
+
         params_slices = np.cumsum(
-            np.array([len(p.reshape((-1,))) for p in all_params]))
+            np.array([len(p.reshape((-1,))) for p in non_none]))
 
         @jit
         def forward_multiply(params):
             mats = []
-            for i, callback in enumerate(callbacks):
-                if i == 0:
-                    p = params[:params_slices[i]]
+            i = 0
+            for callback in callbacks:
+                if all_params[i] is None:
+                    mats.append(callback())
                 else:
-                    p = params[params_slices[i - 1]:params_slices[i]]
-                mats.append(callback(p))
+                    if i == 0:
+                        p = params[:params_slices[i]]
+                    else:
+                        p = params[params_slices[i - 1]:params_slices[i]]
+                    mats.append(callback(p))
+                    i += 1
             return reduce(operator.matmul, mats)
 
         # We should use reverse mode unless there are more parameters than
@@ -100,7 +116,7 @@ class FrameGraph():
         else:
             jac = jit(jacfwd(forward_multiply))
         # We need to call the functions to get them to jit compile
-        ps = np.concatenate(all_params)
+        ps = np.concatenate(non_none)
         forward_multiply(ps)
         jac(ps)
 
@@ -136,7 +152,8 @@ class FrameGraph():
 
         eids = self._graph.get_eids(path=path)
         edges = self._graph.es[eids]
-        ps = np.concatenate([e["params"] for e in edges])
+        ps = np.concatenate([n for n in (e["params"]
+                            for e in edges) if n is not None])
         if not ret_jac:
             return cached_grad["trans_func"](ps)
         return cached_grad["trans_func"](ps), cached_grad["trans_jac"](ps)

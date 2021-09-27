@@ -68,3 +68,9 @@ class Joint():
                 [0, 0, 0, 1]])
             return t_mat
         return callback
+
+    @staticmethod
+    def fixed(trans_mat: jnp.ndarray):
+        def callback():
+            return trans_mat
+        return callback
