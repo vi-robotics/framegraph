@@ -7,8 +7,6 @@ import jax.numpy as jnp
 from jax import jacfwd, jit, jacrev
 import igraph
 
-from framegraph.pose import Pose
-
 
 class FrameGraph():
     """A frame graph which supports rapid relative transform computation.
@@ -57,6 +55,10 @@ class FrameGraph():
         self._graph.add_edge(source, target, **attrs)
         self._graph.add_edge(target, source, **rev_attrs)
 
+    def delete_edge(self, source: Union[int, str],
+                    target: Union[int, str]):
+        self._graph.delete_edges([(source, target), (target, source)])
+
     def get_params(self, source: Union[int, str],
                    target: Union[int, str]):
         source_id = self._node_to_id(source)
@@ -80,7 +82,7 @@ class FrameGraph():
 
         paths = self._graph.get_shortest_paths(source_id, target_id)
         if len(np.squeeze(paths)) == 0:
-            raise ValueError("No path exists from source to target.")
+            raise RuntimeError("No path exists from source to target.")
 
         # Get an arbitrary path
         path = paths[0]
@@ -135,7 +137,7 @@ class FrameGraph():
 
         paths = self._graph.get_shortest_paths(source_id, target_id)
         if len(np.squeeze(paths)) == 0:
-            raise ValueError("No path exists from source to target.")
+            raise RuntimeError("No path exists from source to target.")
 
         key = (source_id, target_id)
         if key not in self._grad_map:
@@ -146,7 +148,13 @@ class FrameGraph():
         path = paths[0]
 
         # If a different path is taken, then we should re-register the gradient
-        if not np.allclose(path, cached_grad["path"]):
+        reregister = False
+        if len(path) != len(cached_grad["path"]):
+            reregister = True
+        else:
+            if not np.allclose(path, cached_grad["path"]):
+                reregister = True
+        if reregister:
             self.register_transform(source, target)
             cached_grad = self._grad_map[key]
 
