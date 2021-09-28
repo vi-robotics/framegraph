@@ -2,8 +2,6 @@ import time
 import unittest
 import warnings
 import numpy as np
-import quaternion
-import jax.numpy as jnp
 
 from framegraph.framegraph import FrameGraph
 from framegraph.joint import Joint

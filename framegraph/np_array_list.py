@@ -116,8 +116,9 @@ class NpArrayList():
         """
         # This might look bizzare, but remember the data property returns the
         # virtual data, and the setter sets the underlying data and handles
-        # adjusting the virtual length also!
-        self.data = self.data
+        # adjusting the virtual length also! We also want to copy the data so
+        # that a view isn't made.
+        self.data = self.data.copy()
 
     def _get_current_idx(self) -> Tuple[Union[int, slice], ...]:
         """Get the index tuple for the current 'append' slice of the array.
@@ -141,12 +142,8 @@ class NpArrayList():
     def _backed_shape(self):
         return self._data.shape
 
-    @property
-    def _backed_size(self):
-        return self._data.size
-
     def __str__(self):
-        return self.data.__str__()
+        return self.data.__str__()  # pragma: no cover
 
     def __getitem__(self, val):
         res_obj = self.data.__getitem__(val)
