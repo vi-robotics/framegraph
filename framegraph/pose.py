@@ -22,6 +22,7 @@ class Pose(AbstractPose):
                     translation.shape[0], quaternion.one, dtype=np.quaternion)
         elif rotation is not None and translation is not None:
             pass
+        # Rotation is not none and translation is none
         else:
             rotation = self._get_standard_rotation(rotation)
             translation = np.zeros((len(rotation), 3))
@@ -71,7 +72,6 @@ class Pose(AbstractPose):
         r_mat = quaternion.as_rotation_matrix(self.rotation)
         if r_mat.ndim == 3:
             trans_mat = np.tile(np.eye(4), (r_mat.shape[0], 1, 1))
-
         else:
             trans_mat = np.eye(4)
 
