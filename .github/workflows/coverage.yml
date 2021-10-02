@@ -27,7 +27,7 @@ jobs:
         run: |
           export PERFORMANCE_TESTS=False
           pip install coveralls
-          coveralls
+          coveralls --service=github
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
