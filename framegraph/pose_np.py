@@ -43,6 +43,7 @@ class PoseNP(np.ndarray, AbstractPose):
 
     def as_trans_mat(self):
         r_mat = quaternion.as_rotation_matrix(self.rotation)
+        trans_mat: np.ndarray
         if r_mat.ndim == 3:
             trans_mat = np.tile(np.eye(4), (r_mat.shape[0], 1, 1))
         else:
