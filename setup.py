@@ -18,6 +18,11 @@ setuptools.setup(
     install_requires=[
         'numpy',
         'numpy-quaternion',
+        'numba',
+        'scipy',
+        'python-igraph',
+        'coverage',
+        'jax[cpu]'
     ],
     extras_require={
         'debug': [
