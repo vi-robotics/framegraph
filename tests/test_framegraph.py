@@ -1,6 +1,7 @@
 import time
 import unittest
 import warnings
+import os
 import numpy as np
 
 from framegraph.framegraph import FrameGraph
@@ -9,6 +10,8 @@ from framegraph.joint import Joint
 
 class TestFrameGraph(unittest.TestCase):
 
+    @unittest.skipIf(os.environ.get('PERFORMANCE_TESTS', False),
+                     "Skipping performance tests")
     def test_performance(self):
         """Test that performance of the frame graph is sufficient
         """

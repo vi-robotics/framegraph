@@ -23,6 +23,7 @@ jobs:
           pip install -e .
       - name: Test with pytest
         run: |
+          export PERFORMANCE_TESTS=False
           coverage run -m pytest
       - name: Coveralls
         uses: coverallsapp/github-action@master
