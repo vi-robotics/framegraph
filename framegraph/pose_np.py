@@ -122,7 +122,7 @@ class PoseNP(np.ndarray, AbstractPose):
                 else:
                     return np.cumprod(quats.shape[:-1])[0]
         else:
-            raise ValueError("quats is not a valid quaternion array.")
+            raise TypeError("quats is not a valid quaternion array.")
 
     @ staticmethod
     def _get_num_trans(translation: np.ndarray) -> int:
@@ -146,8 +146,8 @@ class PoseNP(np.ndarray, AbstractPose):
             else:
                 # This isn't a numpy array, and not a quaternion. So it's
                 # an invalid value.
-                raise ValueError(f"value is type {type(value)}, which is not"
-                                 " a numpy array or quaternion.")
+                raise TypeError(f"value is type {type(value)}, which is not"
+                                " a numpy array or quaternion.")
         return res
 
     def __matmul__(self, other):
@@ -157,11 +157,8 @@ class PoseNP(np.ndarray, AbstractPose):
 
     def __new__(cls, input_array):
         if hasattr(cls, '__abstractmethods__') and len(cls.__abstractmethods__) > 0:
-            raise TypeError(
-                f"Can't instantiate abstract class {cls.__name__} with abstract methods {', '.join(cls.__abstractmethods__)}")
+            raise TypeError(  # pragma: no cover
+                f"Can't instantiate abstract class {cls.__name__} with abstract"
+                f" methods {', '.join(cls.__abstractmethods__)}")
         obj = np.asarray(input_array, dtype=np.float64).view(cls)
         return obj
-
-    def __array_finalize__(self, obj):
-        if obj is None:
-            return

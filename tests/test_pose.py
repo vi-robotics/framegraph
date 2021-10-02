@@ -4,9 +4,9 @@ import quaternion
 from framegraph.pose import Pose
 
 
-class TestFrameGraph(unittest.TestCase):
+class TestPose(unittest.TestCase):
 
-    def test_pose(self):
+    def test_init(self):
         """Test initializing a pose works.
         """
         p = Pose()
