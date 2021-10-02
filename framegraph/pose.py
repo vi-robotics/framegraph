@@ -123,7 +123,7 @@ class Pose(AbstractPose):
                 raise ValueError("rotation has invalid number of dimensions:"
                                  f" {rotation.ndim}")
         else:
-            raise ValueError(f"rotation has invalid type: {type(rotation)}")
+            raise TypeError(f"rotation has invalid type: {type(rotation)}")
         return std_form
 
     def __getitem__(self, key):

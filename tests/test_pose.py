@@ -174,6 +174,26 @@ class TestFrameGraph(unittest.TestCase):
         q = p._get_standard_rotation(np.random.rand(4))
         self.assertTrue(isinstance(q, np.quaternion))
 
+        # Wrong number of dimensions
+        def cause_error():
+            p._get_standard_rotation(np.random.rand(4, 4, 1))
+        self.assertRaises(ValueError, cause_error)
+
+        # Wrong type
+        def cause_error():
+            p._get_standard_rotation("dog")
+        self.assertRaises(TypeError, cause_error)
+
+    def test_indexing(self):
+        """Test that indexing a Pose works.
+        """
+        quat = quaternion.from_float_array(np.random.rand(10, 4))
+        t = np.random.rand(10, 3)
+        p = Pose(quat, t)
+
+        q = p[1:5]
+        self.assertTrue(len(q.rotation) == 4)
+
 
 if __name__ == '__main__':
     unittest.main()  # pragma: no cover
