@@ -27,8 +27,5 @@ jobs:
         run: |
           export PERFORMANCE_TESTS=False
           pip install coveralls
+          coverage run -m pytest
           coveralls --service=github
-      - name: Coveralls
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
