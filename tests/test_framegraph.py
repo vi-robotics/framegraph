@@ -34,9 +34,9 @@ class TestFrameGraph(unittest.TestCase):
         tf = time.time()
         iter_time = (tf - t0) / trials
         if os.environ.get('SLOW_COMPUTER', False):
-            self.assertTrue(iter_time < 1e-3)
+            self.assertTrue(iter_time < 1e-3)  # pragma: no cover
         else:
-            self.assertTrue(iter_time < 1e-4)
+            self.assertTrue(iter_time < 1e-4)  # pragma: no cover
 
     def test_get_params(self):
         """Test that getting parameters from a framegraph works
