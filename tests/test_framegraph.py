@@ -10,8 +10,6 @@ from framegraph.joint import Joint
 
 class TestFrameGraph(unittest.TestCase):
 
-    @unittest.skipIf(os.environ.get('PERFORMANCE_TESTS', False),
-                     "Skipping performance tests")
     def test_performance(self):
         """Test that performance of the frame graph is sufficient
         """
@@ -35,7 +33,10 @@ class TestFrameGraph(unittest.TestCase):
             fg.get_relative_transform("world", "end_effector")
         tf = time.time()
         iter_time = (tf - t0) / trials
-        self.assertTrue(iter_time < 1e-4)
+        if os.environ.get('SLOW_COMPUTER', False):
+            self.assertTrue(iter_time < 1e-3)  # pragma: no cover
+        else:
+            self.assertTrue(iter_time < 1e-4)  # pragma: no cover
 
     def test_get_params(self):
         """Test that getting parameters from a framegraph works
