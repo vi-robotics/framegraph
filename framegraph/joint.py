@@ -1,10 +1,20 @@
+from typing import Callable
 import jax.numpy as jnp
 from jax import jit
 
 
 @jit
 def rodrigues(axis: jnp.ndarray, angle: float) -> jnp.ndarray:
+    """Convert from a rotation vector in axis-angle format to a rotation matrix.
 
+    Args:
+        axis (jnp.ndarray): A unit vector of length 3 representing the axis of
+            rotation
+        angle (float): The angle in radians to rotate around the given axis.
+
+    Returns:
+        jnp.ndarray: A 3x3 rotation matrix.
+    """
     c = jnp.cos(angle)
     s = jnp.sin(angle)
     wx = axis[0]
@@ -21,9 +31,23 @@ def rodrigues(axis: jnp.ndarray, angle: float) -> jnp.ndarray:
 
 
 class Joint():
+    """A helper class to generate transform callbacks for common joint
+    scenarios.
+    """
 
     @staticmethod
-    def revolute(axis: jnp.ndarray):
+    def revolute(axis: jnp.ndarray) -> Callable[[jnp.array], jnp.array]:
+        """A revolute joint representing rotation around a given axis.
+
+        Args:
+            axis (jnp.ndarray): An #Nx3 array representing the axis of rotation.
+
+        Returns:
+            Callable[[jnp.array], jnp.array]: A callback which takes in a length
+                1 array representing the angle around the provided axis and
+                returns a 4x4 transformation matrix representing the rotation
+                (no translation occurs).
+        """
         axis = axis / jnp.linalg.norm(axis)
 
         @jit
@@ -36,6 +60,19 @@ class Joint():
 
     @staticmethod
     def cylindrical(axis: jnp.ndarray):
+        """A cylindrical joint representing rotation around a given axis and
+        translation along the axis.
+
+        Args:
+            axis (jnp.ndarray): An #Nx3 array representing the axis of rotation
+                and translation.
+
+        Returns:
+            Callable[[jnp.array], jnp.array]: A callback which takes in a length
+                2 array representing the angle around the provided axis and the
+                disatnce along the axis to translate, and returns a 4x4
+                transformation matrix representing the transformation.
+        """
         axis = axis / jnp.linalg.norm(axis)
 
         @jit
@@ -52,7 +89,22 @@ class Joint():
 
     @staticmethod
     def revolute_from_dh(theta_offset: float, alpha: float, a: float, d: float):
+        """A revolute joint representing a rotation around an axis with a
+        translational offset calculated from Denavit-Hartenberg parameters.
 
+        Args:
+            theta_offset (float): Angle about previous z, from old x to new x
+            alpha (float): Angle about the common normal, from old z axis to new
+                axis.
+            a (float): Length of the common normal. This is the radius about the
+                previous z.
+            d (float): Offset along the previous z to the common normal.
+
+        Returns:
+            Callable[[jnp.array], jnp.array]: A callback which takes in a length
+                1 array representing joint angle, and returns a 4x4
+                transformation matrix representing the transformation.
+        """
         @jit
         def callback(params: jnp.ndarray):
             theta, = params
@@ -71,6 +123,16 @@ class Joint():
 
     @staticmethod
     def fixed(trans_mat: jnp.ndarray):
+        """A fixed joint representing a static transformation.
+
+        Args:
+            trans_mat (jnp.ndarray): A 4x4 transformation matrix representing
+                the fixed transform.
+
+        Returns:
+            Callable[[jnp.array], jnp.array]: A callback which takes in no
+                parameters, and returns a 4x4 transformation matrix.
+        """
         def callback():
             return trans_mat
         return callback
