@@ -25,7 +25,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          export PERFORMANCE_TESTS=False
+          export SLOW_COMPUTER=True
           pip install coveralls
           coverage run -m pytest
           coveralls --service=github
