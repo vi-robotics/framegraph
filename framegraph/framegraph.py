@@ -1,4 +1,4 @@
-from typing import Union, Callable, Dict, Any, Tuple, Optional
+from typing import Union, Callable, Dict, Any, Tuple, Optional, List
 import sys
 import operator
 from functools import reduce
@@ -13,14 +13,28 @@ class FrameGraph():
     """
 
     def __init__(self, base_node_name: str = "world"):
+        """Initialize the frame graph with a single base node.
+
+        Args:
+            base_node_name (str, optional): The name of the base node. Defaults
+                to "world".
+        """
         self._base_node_name = base_node_name
         self._graph = igraph.Graph(directed=True)
         self._graph.add_vertex(name=self._base_node_name)
         # A dictionary of cached gradients
         self._grad_map: Dict[Tuple[int, int], Any] = {}
 
-    def add_node(self,
-                 node_name: str):
+    def add_node(self, node_name: str):
+        """Add a node to the frame graph. This represents an entity which has
+        a pose in 3D, and has relative transforms to other poses.
+
+        Args:
+            node_name (str): The name of the node to add.
+
+        Raises:
+            ValueError: The node is already present.
+        """
         graph_names = self._graph.vs["name"]
         if node_name in graph_names:
             raise ValueError(f"node_name {node_name} is already present in the"
@@ -32,6 +46,24 @@ class FrameGraph():
                  target: Union[int, str],
                  transform_callback: Callable[..., jnp.ndarray],
                  params: Optional[np.ndarray] = None):
+        """Add an edge to the frame graph. This represents a relative transform
+        between two nodes. The transform is given by a callback, which when
+        called with `params`, produces a 4x4 transformation matrix. This is so
+        chained transformations can be differentiated.
+
+        Args:
+            source (Union[int, str]): The node the transform is from.
+            target (Union[int, str]): The node the transform is to.
+            transform_callback (Callable[..., jnp.ndarray]): A callback which
+                takes in a array of params (which must be the same as provided
+                params) and returns a 4x4 transformation matrix.
+            params (Optional[np.ndarray], optional): An array representing the
+                parameters of the transform callback. Defaults to None.
+
+        Raises:
+            ValueError: params is not an ndarray or has the wrong shape
+            RuntimeError: callback failed when called with params
+        """
         if params is not None:
             if not isinstance(params, np.ndarray):
                 raise ValueError("params must be an ndarray")
@@ -57,10 +89,34 @@ class FrameGraph():
 
     def delete_edge(self, source: Union[int, str],
                     target: Union[int, str]):
+        """Delete an edge from the graph. If there is an edge from source to
+        target or target to source, it is deleted.
+
+        Args:
+            source (Union[int, str]): The node the transform is from.
+            target (Union[int, str]): The node the transform is to.
+        """
         self._graph.delete_edges([(source, target), (target, source)])
 
     def get_params(self, source: Union[int, str],
-                   target: Union[int, str]):
+                   target: Union[int, str]
+                   ) -> Tuple[List[Tuple[str, str]], List[jnp.array]]:
+        """Get parameters and descriptors for a chain of edges from source to
+        target.
+
+        Args:
+            source (Union[int, str]): The source node of the graph. It does not
+                need to be adjacent to target, but there must be a path of
+                connected edges to target.
+            target (Union[int, str]): The target node of the graph.
+
+        Returns:
+            Tuple[List[Tuple[str, str]], List[jnp.array]]: A Tuple comprising:
+                List[Tuple[str, str]]: A list of tuples of edge names
+                    representing the edges of the path from source to target.
+                List[jnp.array]: A list of parameter arrays, each associated
+                    with the corresponding edge tuple.
+        """
         source_id = self._node_to_id(source)
         target_id = self._node_to_id(target)
         paths = self._graph.get_shortest_paths(source_id, target_id)
@@ -77,6 +133,19 @@ class FrameGraph():
     def register_transform(self,
                            source: Union[int, str],
                            target: Union[int, str]):
+        """Register a transform from a source to a target to jit compile such
+        that future calls of the relative transform from source to target will
+        be more efficient.
+
+        Args:
+            source (Union[int, str]): The source node of the graph. It does not
+                need to be adjacent to target, but there must be a path of
+                connected edges to target.
+            target (Union[int, str]): The target node of the graph.
+
+        Raises:
+            RuntimeError: No path exists from source to target.
+        """
         source_id = self._node_to_id(source)
         target_id = self._node_to_id(target)
 
@@ -131,7 +200,34 @@ class FrameGraph():
                                source: Union[int, str],
                                target: Union[int, str],
                                ret_jac: bool = False
-                               ):
+                               ) -> Union[jnp.ndarray,
+                                          Tuple[jnp.ndarray, jnp.ndarray]]:
+        """Get the relative transformation matrix from the source to the target.
+        This can optionally return the jacobian of the transformation matrix
+        with respect to the input parameters (in the order of the path, which
+        can be found using the `get_params` function).
+
+        Args:
+            source (Union[int, str]): The source node of the graph. It does not
+                need to be adjacent to target, but there must be a path of
+                connected edges to target.
+            target (Union[int, str]): The target node of the graph.
+            ret_jac (bool, optional): If True, then also return the jacobian
+                of the resulting transformation matrix with respect to the
+                input parameters. Defaults to False.
+
+        Raises:
+            RuntimeError: No path exists from source to target.
+
+        Returns:
+            Union[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray]]:
+                jnp.ndarray: A 4x4 transformation matrix representing the
+                    relative transform from the source to the target.
+                Optional[jnp.ndarray]: A 4x4x#N array, where #N is the number
+                    of parameters from source to target, representing the
+                    jacobian of the transformation matrix with respect to the
+                    input parameters.
+        """
         source_id = self._node_to_id(source)
         target_id = self._node_to_id(target)
 
